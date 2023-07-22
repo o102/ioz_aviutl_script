@@ -1,0 +1,216 @@
+--track0:ÉTÉCÉY,0,1000,100
+--track1:ÉâÉCÉìïù,0,1000,1000
+--track2:ï”ä€ÉTÉCÉY,1,1000,200
+--color:0xffffff
+
+Vector = {}
+function Vector:new(x,y)
+  local obj = {x_ = x, y_ = y}
+  return setmetatable(obj, {__index = Vector, __add = Vector.__add, __sub = Vector.__sub, __mul = Vector.__mul, __div = Vector.__div, __tostring = Vector.__tostring})
+end
+function Vector:__unm()
+  local obj = Vector:new(self.x_, self.y_)
+  return obj
+end
+function Vector:__add(v2)
+  local obj = Vector:new(self.x_ + v2.x_, self.y_ + v2.y_)
+  return obj
+end
+function Vector:__sub(v2)
+  local obj = Vector:new(self.x_ - v2.x_, self.y_ - v2.y_)
+  return obj
+end
+function Vector:__mul(value)
+  local obj = Vector:new(self.x_ * value, self.y_ * value)
+  return obj
+end
+function Vector:__div(value)
+  local obj = Vector:new(self.x_ / value, self.y_ / value)
+  return obj
+end
+function Vector:__tostring()
+  return '(' .. self.x_ .. ', ' .. self.y_ .. ')'
+end
+function Vector:norm()
+  local obj = math.sqrt(self.x_ ^ 2 + self.y_ ^ 2)
+  return obj
+end
+function Vector:rotate(theta)
+  local cos_theta = math.cos(theta)
+  if (theta == (math.pi/2) or theta == (math.pi + math.pi/2)) then
+    cos_theta = 0
+  end
+  local obj = Vector:new(self.x_ * cos_theta - self.y_ * math.sin(theta), self.x_ * math.sin(theta) + self.y_ * cos_theta)
+  return obj
+end
+function Vector:isLeft(v2)
+  return self.x_ < v2.x_
+end
+function Vector:isTop(v2)
+  return self.y_ < v2.y_
+end
+
+Circle = {}
+function Circle:new(vector,radius)
+  local obj = {vector_ = vector, radius_ = radius}
+  return setmetatable(obj, {__index = Circle, __tostring = Circle.__tostring})
+end
+function Circle:__tostring()
+  return 'vector_ = ' .. self.vector_:__tostring() .. ', radius_ = ' .. self.radius_
+end
+function Circle:isLeft(circle2)
+  return self.vector_:isLeft(circle2.vector_)
+end
+function Circle:isTop(circle2)
+  return self.vector_:isTop(circle2.vector_)
+end
+
+local function createCircleThoughTwoPoints(vector1, vector2, radius)
+  local chord_vector = vector2 - vector1
+  local d = chord_vector:norm()
+  local rc = d / 2
+  local saggitta_vector = math.sqrt(radius ^ 2 - rc ^ 2)
+  local e1 = chord_vector / d
+  local e2 = e1:rotate(math.pi / 2)
+  local result_vector1 = vector1 + e1 * rc + e2 * saggitta_vector
+  local result_vector2 = vector1 + e1 * rc - e2 * saggitta_vector
+  local result1 = Circle:new(result_vector1, radius)
+  local result2 = Circle:new(result_vector2, radius)
+  debug_print('circle1 = ('..result1:__tostring()..'), circle2 = ('..result2:__tostring()..')')
+  return result1, result2
+end
+
+obj.setoption("blend","alpha_add")
+obj.setoption("drawtarget","tempbuffer", obj.track0 * 2, obj.track0 * 2)
+
+--ìÒì_ä‘ÇÃãóó£Ç™íºåaÇÊÇËëÂÇ´Ç¢èÍçáÇÕâ~Ç™ë∂ç›ÇµÇ»Ç¢ÇΩÇﬂ
+local circle_size = obj.track2
+if (obj.track0 > obj.track2) then
+  circle_size = obj.track0
+end
+
+local line_width = obj.track1
+if (obj.track1 > obj.track0) then
+  line_width = obj.track0
+end
+
+obj.load("figure","â~",color,circle_size,line_width)
+
+x = obj.track0/2
+y = obj.track0/2
+radius = circle_size/2
+
+local result = {}
+local tmp
+result[0], tmp = createCircleThoughTwoPoints(Vector:new(- x, - y), Vector:new(x, - y), radius)
+if result[0]:isTop(tmp) then
+  result[0] = tmp
+end
+result[1], tmp = createCircleThoughTwoPoints(Vector:new(x, - y), Vector:new(x, y), radius)
+if not result[1]:isLeft(tmp) then
+  result[1] = tmp
+end
+result[2], tmp = createCircleThoughTwoPoints(Vector:new(x, y), Vector:new(- x, y), radius)
+if not result[2]:isTop(tmp) then
+  result[2] = tmp
+end
+result[3], tmp = createCircleThoughTwoPoints(Vector:new(- x, y), Vector:new(- x, - y), radius)
+if result[3]:isLeft(tmp) then
+  result[3] = tmp
+end
+
+circle_draw_width = - obj.track0/2
+if (radius > obj.track0/2) then
+  circle_draw_width = radius 
+end
+
+-- è„ï”ÇÃâ~å 
+obj.drawpoly(
+  - x, result[0].vector_.y_ - radius, 0,
+  x, result[0].vector_.y_ - radius, 0,
+  x, - y, 0,
+  - x,- y, 0,
+  - x + radius, 0,
+  x + radius, 0,
+  x + radius, - y - result[0].vector_.y_ + radius,
+  - x + radius, - y - result[0].vector_.y_ + radius)
+
+-- Å®
+obj.drawpoly(
+  x, - y, 0,
+  result[1].vector_.x_ + radius, - y, 0,
+  result[1].vector_.x_ + radius, y, 0,
+  x, y, 0,
+  x - result[1].vector_.x_ + radius, - y + radius,
+  circle_size, - y + radius,
+  circle_size, y + radius,
+  x - result[1].vector_.x_ + radius, y + radius)
+
+-- Å´
+obj.drawpoly(
+  - x, y, 0,
+  x, y, 0,
+  x, result[2].vector_.y_ + radius, 0,
+  - x, result[2].vector_.y_ + radius, 0,
+  -x + radius, y - result[2].vector_.y_ + radius,
+  x + radius, y - result[2].vector_.y_ + radius,
+  x + radius, circle_size,
+  -x + radius, circle_size)
+
+-- Å©
+obj.drawpoly(
+  result[3].vector_.x_ - radius, - y, 0,
+  - x, - y, 0,
+  - x, y, 0,
+  result[3].vector_.x_ - radius, y, 0,
+  0, - y + radius,
+  - x - result[3].vector_.x_ + radius, - y + radius,
+  - x - result[3].vector_.x_ + radius, y + radius,
+  0, y + radius)
+
+-- ç∂è„éOäp
+obj.load("figure","éläpå`",color, obj.track0)
+obj.drawpoly(
+  - x, - y, 0,
+  - x, - y, 0,
+  - x + line_width, - y, 0,
+  - x, - y + line_width, 0,
+  0, 0,
+  0, 0,
+  line_width, 0,
+  0, line_width)
+-- âEè„éOäp
+obj.drawpoly(
+  x - line_width, - y, 0,
+  x - line_width, - y, 0,
+  x, - y, 0,
+  x, - y + line_width, 0,
+  0, 0,
+  0, 0,
+  line_width, 0,
+  0, line_width)
+-- âEâ∫éOäp
+obj.drawpoly(
+  x, y - line_width, 0,
+  x, y - line_width, 0,
+  x, y, 0,
+  x - line_width, y, 0,
+  line_width, 0,
+  line_width, 0,
+  line_width, line_width,
+  line_width, 0)
+-- ç∂â∫éOäp
+obj.drawpoly(
+  - x, y - line_width, 0,
+  - x, y - line_width, 0,
+  - x + line_width, y, 0,
+  - x, y, 0,
+  0, 0,
+  0, 0,
+  line_width, line_width,
+  0,line_width)
+
+obj.load("tempbuffer")
+obj.setoption("dst","frm")
+
+
